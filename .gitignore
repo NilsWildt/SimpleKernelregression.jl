@@ -12,4 +12,5 @@ env
 node_modules
 flake.nix
 flake.lock
-.claude/
+.claude/.vscode/
+.vscode/
