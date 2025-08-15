@@ -103,6 +103,7 @@ Y_pred = f(X_test)
 
 ## Available Kernels
 
+For more Info, checkout [https://en.wikipedia.org/wiki/Kernel_(statistics)#Kernel_functions_in_common_use](https://en.wikipedia.org/wiki/Kernel_(statistics)#Kernel_functions_in_common_use).
 ### Gaussian Kernel
 ```julia
 kernel = Gaussian(σ)  # σ is the bandwidth parameter
