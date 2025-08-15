@@ -10,3 +10,5 @@ coverage
 docs/build/
 env
 node_modules
+flake.nix
+flake.lock
