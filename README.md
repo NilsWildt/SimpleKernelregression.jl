@@ -18,8 +18,8 @@ SimpleKernelRegression is just my own simple kernel regression. Doesn't do more,
 
 ## Main sources
 
-* [](https://gabrielesantin.github.io/files/approximation_with_kernel_methods.pdf)
-* [](https://github.com/GabrieleSantin/VKOGA/tree/master)
+* [https://gabrielesantin.github.io/files/approximation_with_kernel_methods.pdf](https://gabrielesantin.github.io/files/approximation_with_kernel_methods.pdf)
+* [https://github.com/GabrieleSantin/VKOGA/tree/master)](https://github.com/GabrieleSantin/VKOGA/tree/master)
 
 Further Literature
 1. H. Wendland. "Scattered Data Approximation", Cambridge Monographs on Applied and Computational Mathematics, 2005.
