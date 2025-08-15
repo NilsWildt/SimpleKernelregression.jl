@@ -86,9 +86,9 @@ function GreedyKernelInterpolant(
 
     return GreedyKernelInterpolant{T, typeof(kernel)}(
         kernel,
-        Array{T}(undef, 0, 0), 
-        Array{T}(undef, 0, 0), 
-        Array{T}(undef, 0, 0), 
+        Array{T}(undef, 0, 0),
+        Array{T}(undef, 0, 0),
+        Array{T}(undef, 0, 0),
         T[],
         T[],
         T(tolerance),
@@ -182,7 +182,7 @@ function fit!(
             f_max = sqrt(f_squared[idx])
             p_max = power_vals[idx]
         end
-        
+
         # Ensure idx is a scalar row index
         if idx isa CartesianIndex
             idx = idx[1]
@@ -213,7 +213,6 @@ function fit!(
             # Ensure we maintain 2D structure - new_center is already properly shaped
             interpolant.centers = vcat(interpolant.centers, new_center)
         end
-        
 
 
         # Compute kernel values for the new center
@@ -241,7 +240,7 @@ function fit!(
             # Compute orthogonal basis for new center
             V_new = zeros(T, n_centers)
             V_new[1:(end - 1)] = K_new_old * interpolant.orthogonal_basis'
-            
+
             # Ensure numerical stability for the orthogonal component
             orthogonal_component = K_new_new[1, 1] - sum(V_new[1:(end - 1)] .^ 2)
             V_new[end] = sqrt(max(orthogonal_component, interpolant.regularization))
@@ -264,7 +263,7 @@ function fit!(
         # Update residual
         prediction = predict(interpolant, X)
         residual = Y - prediction
-        
+
         # Check for numerical instability
         if !all(isfinite, residual)
             if interpolant.verbose
@@ -549,28 +548,28 @@ function estimate_convergence_rate(interpolant::GreedyKernelInterpolant)
     p_tail = interpolant.power_history[tail_start:end]
 
     # Filter out very small or zero values
-    valid_mask = p_tail .> 1e-12
+    valid_mask = p_tail .> 1.0e-12
     if sum(valid_mask) < 3
         return NaN
     end
-    
+
     n_valid = n_tail[valid_mask]
     p_valid = p_tail[valid_mask]
-    
+
     # Linear fit in log space: log(p) ≈ log(C) - α * n
     log_p = log.(p_valid)
-    
+
     # Linear regression
     A = hcat(ones(length(n_valid)), n_valid)
     coeffs = A \ log_p
-    
+
     # Extract convergence rate and ensure it's reasonable
     α = -coeffs[2]
-    
+
     # Check if the fit is reasonable
     if !isfinite(α) || α < 0 || α > 10
         return NaN
     end
-    
+
     return α
 end

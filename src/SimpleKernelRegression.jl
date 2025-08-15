@@ -426,19 +426,24 @@ function power_function(kernel::SKernel, X::AbstractArray, x::AbstractArray, reg
     K_xX = evalKmatrix(kernel, x, X)
     K_xx = evalKmatrix(kernel, x, x)
 
-    # Better numerical handling
-    c = K_XX \ K_xX'
+    # Compute power function for each evaluation point
     power_vals = zeros(size(x, 1))
 
     for i in 1:size(x, 1)
-        # Ensure numerical stability
-        power_val = max(0.0, K_xx[i, i] - dot(c[:, i], K_xX[i, :]))
-        power_vals[i] = sqrt(power_val + reg)  # Add regularization
+        # For each evaluation point x_i
+        k_xi_X = K_xX[i:i, :]  # k(x_i, X) - ensure it's a row vector
+        k_xi_xi = K_xx[i, i] # k(x_i, x_i)
+
+        # Solve K_XX * c = k_xi_X^T for c
+        c = K_XX \ k_xi_X'
+
+        # Power function: P(x_i) = sqrt(k(x_i, x_i) - k(x_i, X)^T * K_XX^(-1) * k(x_i, X))
+        power_val = k_xi_xi - dot(k_xi_X, c)
+        power_vals[i] = sqrt(max(0.0, power_val) + reg)
     end
 
     return power_vals
 end
-
 
 
 """
@@ -1358,11 +1363,12 @@ end
 
     # Create test data
     X = [0.0 0.0; 1.0 0.0; 0.0 1.0; 1.0 1.0]  # Structured points
-    kernel = Gaussian(0.5)
+    kernel = Gaussian(1.0)  # Use larger bandwidth for numerical stability
 
     # Test power function at interpolation points (should be small but may not be exactly 0 due to regularization)
     power_at_nodes = SimpleKernelRegression.power_function(kernel, X, X, 1.0e-6)
-    @test all(power_at_nodes .< 1.0e-1)  # Power function should be small at data points (very relaxed tolerance)
+    @info "Power at nodes: $(power_at_nodes)"
+    @test all(power_at_nodes .< 1.0e-2)  # Power function should be small at data points (allowing for regularization)
 
     # Test power function at intermediate points
     x_test = [0.5 0.5; 0.25 0.75]  # Points away from data
@@ -1378,7 +1384,7 @@ end
     @test power_far[1] > power_close[1]  # Farther points have higher power function
 
     # Test with different kernels
-    kernels_to_test = [Gaussian(1.0), Imq(1.0), Mq(1.0), Polynomial(1.0, 2)]
+    kernels_to_test = [Gaussian(3.0), Imq(3.0), Mq(0.1), Polynomial(3.0, 2)]
     for test_kernel in kernels_to_test
         power_vals_kernel = SimpleKernelRegression.power_function(test_kernel, X, x_test, 1.0e-6)
         @test all(isfinite, power_vals_kernel)
