@@ -1,0 +1,12 @@
+# Changes here will be overwritten by Copier
+Authors: NilsWildt <nils.wildt@iws.uni-stuttgart.de>
+JuliaMinVersion: '1.11'
+License: MIT
+LicenseCopyrightHolders: NilsWildt
+PackageName: SimpleKernelRegression
+PackageOwner: NilsWildt
+PackageUUID: 47c81bad-6c13-54dd-8d7a-198cdd0ce79a
+StrategyConfirmIncluded: false
+StrategyLevel: 1
+StrategyReviewExcluded: false
+_src_path: /Users/nilswildt/.julia/packages/BestieTemplate/jdG8v

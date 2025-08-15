@@ -1,0 +1,7 @@
+name = "SimpleKernelRegression"
+uuid = "47c81bad-6c13-54dd-8d7a-198cdd0ce79a"
+authors = ["NilsWildt <nils.wildt@iws.uni-stuttgart.de>"]
+version = "0.1.0"
+
+[compat]
+julia = "1.11"
