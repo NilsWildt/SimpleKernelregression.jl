@@ -6,4 +6,5 @@
 [![Coverage](https://codecov.io/gh/NilsWildt/SimpleKernelRegression.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/NilsWildt/SimpleKernelRegression.jl)
 [![Docs workflow Status](https://github.com/NilsWildt/SimpleKernelRegression.jl/actions/workflows/Docs.yml/badge.svg?branch=main)](https://github.com/NilsWildt/SimpleKernelRegression.jl/actions/workflows/Docs.yml?query=branch%3Amain)
 [![BestieTemplate](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/JuliaBesties/BestieTemplate.jl/main/docs/src/assets/badge.json)](https://github.com/JuliaBesties/BestieTemplate.jl)
-
+[![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
+[![code style: runic](https://img.shields.io/badge/code_style-%E1%9A%B1%E1%9A%A2%E1%9A%BE%E1%9B%81%E1%9A%B2-black)](https://github.com/fredrikekre/Runic.jl)

@@ -12,21 +12,21 @@ K(x,y) = (x,y)
 end
 
 
-_evalKmatrix(linear::Linear, xTy) =  xTy
+_evalKmatrix(linear::Linear, xTy) = xTy
 
 function evalKmatrix(linear::Linear, x::AbstractArray, y::AbstractArray)
     if linear.calc_bias
         x = prepend_one(x)
     end
-  K = _evalKmatrix(linear, kernel_dot(x, y)) # Do the inner product and get the polynomial Kernel Matrix
+    return K = _evalKmatrix(linear, kernel_dot(x, y)) # Do the inner product and get the polynomial Kernel Matrix
 end
 
-function Base.String(linear::Linear) 
-if linear.calc_bias == true
-    return "k_linear"
-else
-    return "k_affine"
-end
+function Base.String(linear::Linear)
+    if linear.calc_bias == true
+        return "k_linear"
+    else
+        return "k_affine"
+    end
 end
 
 

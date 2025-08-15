@@ -17,9 +17,9 @@ end
 
 # Constructor of the struct above.
 Polynomial(a::T, p::Int) where {T} = Polynomial{T}(a, p)
-_evalKmatrix(polynomial::Polynomial, xTy) = @fastmath (xTy .+ polynomial.a).^polynomial.p
+_evalKmatrix(polynomial::Polynomial, xTy) = @fastmath (xTy .+ polynomial.a) .^ polynomial.p
 function evalKmatrix(polynomial::Polynomial, x::AbstractArray, y::AbstractArray)
-    K = _evalKmatrix(polynomial, kernel_dot(x, y')) # Do the inner product and get the polynomial Kernel Matrix
+    return K = _evalKmatrix(polynomial, kernel_dot(x, y')) # Do the inner product and get the polynomial Kernel Matrix
 end
 
 

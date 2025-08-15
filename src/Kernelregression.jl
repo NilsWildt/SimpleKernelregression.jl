@@ -5,7 +5,7 @@ using LinearAlgebra
 using ConcreteStructs: @concrete
 using TestItems
 abstract type SKernel end
-export get_kernel_interpolant, get_kernel_derivative_interpolant, SKernel, NWKernelsmooth, Gaussian
+export get_kernel_interpolant, get_kernel_derivative_interpolant, SKernel, Gaussian, Imq, Linear, Polynomial, Mq, Epanechnikov
 
 
 include("k_gaussian.jl")
@@ -17,7 +17,7 @@ include("k_epanechnikov.jl")
 
 
 function prepend_one(X::AbstractArray)
-    X = cat(ones(size(X, 1)), X;dims = 2)
+    return X = cat(ones(size(X, 1)), X; dims = 2)
 end
 
 """
@@ -33,7 +33,7 @@ function pDist2(X::AbstractArray, Y::AbstractArray)
 end
 
 
-function pDist2Squared(X::AbstractArray{T}, Y::AbstractArray{R}) where {T<:Real, R<:Real}
+function pDist2Squared(X::AbstractArray{T}, Y::AbstractArray{R}) where {T <: Real, R <: Real}
     # (x - y) ^ 2 = x ^ 2 + y ^ 2 - 2 * x * y
     Ly = size(Y, 1)
     Lx = size(X, 1)
@@ -59,22 +59,22 @@ end
 
 
 # Inner-product matrix helper for linear/polynomial kernels
-function kernel_dot(X::AbstractArray{T}, Y::AbstractArray{R}) where {T<:Real, R<:Real}
+function kernel_dot(X::AbstractArray{T}, Y::AbstractArray{R}) where {T <: Real, R <: Real}
     return X * Y'
 end
 
 # If Y is already an Adjoint, avoid double-transpose
-function kernel_dot(X::AbstractArray{T}, Y::Adjoint) where {T<:Real}
+function kernel_dot(X::AbstractArray{T}, Y::Adjoint) where {T <: Real}
     return X * Y
 end
 
 
 function regularize!(K::AbstractMatrix, reg::Real = 1.0e-6)
-    K .+= reg .* I
+    return K .+= reg .* Matrix(I, size(K, 1), size(K, 2))
 end
 
 function regularize(K::AbstractMatrix, reg::Real = 1.0e-6)
-    return K .+ reg .* I
+    return K .+ reg .* Matrix(I, size(K, 1), size(K, 2))
 end
 
 
@@ -96,7 +96,7 @@ end
 
 
 # Optional: pre-factorized interpolant types for fast updates of Y
-@concrete mutable struct KernelInterpolant{T, KT<:SKernel, FT}
+@concrete mutable struct KernelInterpolant{T, KT <: SKernel, FT}
     X::AbstractArray{T}
     kernel::KT
     reg::T
@@ -105,7 +105,7 @@ end
     initialized::Bool
 end
 
-function KernelInterpolant(X::AbstractArray{T}, kernel::SKernel, reg::Real = 1.0e-6) where {T<:Real}
+function KernelInterpolant(X::AbstractArray{T}, kernel::SKernel, reg::Real = 1.0e-6) where {T <: Real}
     K = evalKmatrix(kernel, X, X)
     K = regularize(K, reg)
     Kf = factorize(K)
@@ -113,21 +113,21 @@ function KernelInterpolant(X::AbstractArray{T}, kernel::SKernel, reg::Real = 1.0
     return KernelInterpolant{T, typeof(kernel), typeof(Kf)}(X, kernel, T(reg), Kf, coeffs, true)
 end
 
-@inline function solve_matrix(Kf, Y::AbstractArray{T}) where {T<:Real}
+@inline function solve_matrix(Kf, Y::AbstractArray{T}) where {T <: Real}
     return Kf \ Y
 end
 
-function update_coefficients!(interp::KernelInterpolant{R}, Y::AbstractArray{T}) where {R, T<:Real}
+function update_coefficients!(interp::KernelInterpolant{R}, Y::AbstractArray{T}) where {R, T <: Real}
     interp.coefficients = solve_matrix(interp.K_factorization, Y)
     return interp
 end
 
-function (interp::KernelInterpolant{T})(xnew::AbstractArray) where {T<:Real}
+function (interp::KernelInterpolant{T})(xnew::AbstractArray) where {T <: Real}
     return evalKmatrix(interp.kernel, xnew, interp.X) * interp.coefficients
 end
 
 
-@concrete mutable struct KernelDerivativeInterpolant{T, KT<:SKernel, FT}
+@concrete mutable struct KernelDerivativeInterpolant{T, KT <: SKernel, FT}
     X::AbstractArray{T}
     kernel::KT
     reg::T
@@ -136,7 +136,7 @@ end
     initialized::Bool
 end
 
-function KernelDerivativeInterpolant(X::AbstractArray{T}, kernel::SKernel, reg::Real = 1.0e-6) where {T<:Real}
+function KernelDerivativeInterpolant(X::AbstractArray{T}, kernel::SKernel, reg::Real = 1.0e-6) where {T <: Real}
     K = evalKmatrix(kernel, X, X)
     K = regularize(K, reg)
     Kf = factorize(K)
@@ -144,12 +144,12 @@ function KernelDerivativeInterpolant(X::AbstractArray{T}, kernel::SKernel, reg::
     return KernelDerivativeInterpolant{T, typeof(kernel), typeof(Kf)}(X, kernel, T(reg), Kf, coeffs, true)
 end
 
-function update_coefficients!(interp::KernelDerivativeInterpolant{T}, Y::AbstractArray{T}) where {T<:Real}
+function update_coefficients!(interp::KernelDerivativeInterpolant{T}, Y::AbstractArray{T}) where {T <: Real}
     interp.coefficients = interp.K_factorization \ Y
     return interp
 end
 
-function (interp::KernelDerivativeInterpolant{T})(xnew::AbstractArray) where {T<:Real}
+function (interp::KernelDerivativeInterpolant{T})(xnew::AbstractArray) where {T <: Real}
     return evalKmatrix_derivative(interp.kernel, xnew, interp.X) * interp.coefficients
 end
 
@@ -170,7 +170,7 @@ function evalKmatrix_derivative(imq::Imq, x::AbstractArray, y::AbstractArray)
 end
 
 
-function marginal_log_likelihood(θ, X::AbstractArray{T}, Y::AbstractArray{R}, KernelType, reg::Real = 1.0e-5) where {T<:Real, R<:Real}
+function marginal_log_likelihood(θ, X::AbstractArray{T}, Y::AbstractArray{R}, KernelType, reg::Real = 1.0e-5) where {T <: Real, R <: Real}
     σ = θ[1]
     kernel = KernelType(σ)
     K = evalKmatrix(kernel, X, X) .+ reg .* I
@@ -191,122 +191,114 @@ end
 
 # Inline tests using TestItems
 @testitem "Gaussian Kernel Construction" begin
-    using Kernelregression
     σ = 1.0
-    kernel = Kernelregression.Gaussian(σ)
+    kernel = Gaussian(σ)
     @test kernel.σ == σ
-    @test typeof(kernel) <: Kernelregression.SKernel
+    @test typeof(kernel) <: SKernel
 end
 
 @testitem "IMQ Kernel Construction" begin
-    using Kernelregression
     σ = 1.0
-    kernel = Kernelregression.Imq(σ)
+    kernel = Imq(σ)
     @test kernel.σ == σ
-    @test typeof(kernel) <: Kernelregression.SKernel
+    @test typeof(kernel) <: SKernel
 end
 
 @testitem "Kernel Matrix Evaluation" begin
-    using Kernelregression
     using Random
     Random.seed!(42)
     X = rand(10, 2)
     Y = rand(5, 2)
     σ = 1.0
-    gaussian = Kernelregression.Gaussian(σ)
-    K_gaussian = Kernelregression.evalKmatrix(gaussian, X, Y)
+    gaussian = Gaussian(σ)
+    K_gaussian = SimpleKernelRegression.evalKmatrix(gaussian, X, Y)
     @test size(K_gaussian) == (10, 5)
     @test all(isfinite, K_gaussian)
-    imq = Kernelregression.Imq(σ)
-    K_imq = Kernelregression.evalKmatrix(imq, X, Y)
+    imq = Imq(σ)
+    K_imq = SimpleKernelRegression.evalKmatrix(imq, X, Y)
     @test size(K_imq) == (10, 5)
     @test all(isfinite, K_imq)
 end
 
 @testitem "Kernel Derivative Evaluation" begin
-    using Kernelregression
     using Random
     Random.seed!(42)
     X = rand(10, 2)
     Y = rand(5, 2)
     σ = 1.0
-    gaussian = Kernelregression.Gaussian(σ)
-    dK_gaussian = Kernelregression.evalKmatrix_derivative(gaussian, X, Y)
+    gaussian = Gaussian(σ)
+    dK_gaussian = SimpleKernelRegression.evalKmatrix_derivative(gaussian, X, Y)
     @test size(dK_gaussian) == (10, 5)
     @test all(isfinite, dK_gaussian)
-    imq = Kernelregression.Imq(σ)
-    dK_imq = Kernelregression.evalKmatrix_derivative(imq, X, Y)
+    imq = Imq(σ)
+    dK_imq = SimpleKernelRegression.evalKmatrix_derivative(imq, X, Y)
     @test size(dK_imq) == (10, 5)
     @test all(isfinite, dK_imq)
 end
 
 @testitem "Kernel Interpolant" begin
-    using Kernelregression
     using Random
     Random.seed!(42)
     X = rand(10, 2)
     Y = rand(10, 1)
     σ = 1.0
     reg = 1.0e-6
-    gaussian = Kernelregression.Gaussian(σ)
-    interpolant = Kernelregression.get_kernel_interpolant(X, Y, gaussian, reg)
+    gaussian = Gaussian(σ)
+    interpolant = SimpleKernelRegression.get_kernel_interpolant(X, Y, gaussian, reg)
     X_test = rand(5, 2)
     Y_pred = interpolant(X_test)
     @test size(Y_pred) == (5, 1)
     @test all(isfinite, Y_pred)
-    imq = Kernelregression.Imq(σ)
-    interpolant2 = Kernelregression.get_kernel_interpolant(X, Y, imq, reg)
+    imq = Imq(σ)
+    interpolant2 = SimpleKernelRegression.get_kernel_interpolant(X, Y, imq, reg)
     Y_pred2 = interpolant2(X_test)
     @test size(Y_pred2) == (5, 1)
     @test all(isfinite, Y_pred2)
 end
 
 @testitem "Kernel Derivative Interpolant" begin
-    using Kernelregression
     using Random
     Random.seed!(42)
     X = rand(10, 2)
     Y = rand(10, 1)
     σ = 1.0
     reg = 1.0e-6
-    gaussian = Kernelregression.Gaussian(σ)
-    interpolant = Kernelregression.get_kernel_derivative_interpolant(X, Y, gaussian, reg)
+    gaussian = Gaussian(σ)
+    interpolant = SimpleKernelRegression.get_kernel_derivative_interpolant(X, Y, gaussian, reg)
     X_test = rand(5, 2)
     Y_pred = interpolant(X_test)
     @test size(Y_pred) == (5, 1)
     @test all(isfinite, Y_pred)
-    imq = Kernelregression.Imq(σ)
-    interpolant2 = Kernelregression.get_kernel_derivative_interpolant(X, Y, imq, reg)
+    imq = Imq(σ)
+    interpolant2 = SimpleKernelRegression.get_kernel_derivative_interpolant(X, Y, imq, reg)
     Y_pred2 = interpolant2(X_test)
     @test size(Y_pred2) == (5, 1)
     @test all(isfinite, Y_pred2)
 end
 
 @testitem "Pairwise Distance Functions" begin
-    using Kernelregression
     using Random
     Random.seed!(42)
     X = rand(10, 10)
     Y = rand(10, 10)
-    D_squared = Kernelregression.pDist2Squared(X, Y)
+    D_squared = SimpleKernelRegression.pDist2Squared(X, Y)
     @test size(D_squared) == (10, 10)
     @test all(isfinite, D_squared)
     @test all(≥(0), D_squared)
-    D = Kernelregression.pDist2(X, Y)
+    D = SimpleKernelRegression.pDist2(X, Y)
     @test size(D) == (10, 10)
     @test all(isfinite, D)
 end
 
 @testitem "Marginal Log Likelihood" begin
-    using Kernelregression
     using Random
     Random.seed!(42)
     X = rand(20, 10)
     Y = rand(20, 20)
     θ = [1.0]
-    ll_gaussian = Kernelregression.marginal_log_likelihood(θ, X, Y, Kernelregression.Gaussian)
+    ll_gaussian = SimpleKernelRegression.marginal_log_likelihood(θ, X, Y, Gaussian)
     @test isfinite(ll_gaussian)
-    ll_imq = Kernelregression.marginal_log_likelihood(θ, X, Y, Kernelregression.Imq)
+    ll_imq = SimpleKernelRegression.marginal_log_likelihood(θ, X, Y, Imq)
     @test isfinite(ll_imq)
 end
 

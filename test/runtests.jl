@@ -1,6 +1,15 @@
 using SimpleKernelRegression
 using Test
+using Aqua
+using TestItemRunner
 
-@testset "SimpleKernelRegression.jl" begin
-    @test SimpleKernelRegression.hello_world() == "Hello, World!"
-end
+
+@run_package_tests
+
+
+@testset "Aqua.jl" begin
+    Aqua.test_all(
+      SimpleKernelRegression;
+      stale_deps=(ignore=[:MKL,:AppleAccelerate],)
+    )
+  end
