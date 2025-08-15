@@ -14,7 +14,7 @@
 
 ## Overview
 
-SimpleKernelRegression is just my own simple kernel regression. Doesn't do more, doesn't do less. Not everything is yet throughfully tested -- Interpolation and Regression are solid.
+SimpleKernelRegression is just my own simple kernel regression. Doesn't do more, doesn't do less. Not everything is yet throughfully tested -- Interpolation and Regression are solid. Debatable shape choice (rows vs. col for datapoints), therefore some more transposing than one might want. 
 
 ## Main sources
 
