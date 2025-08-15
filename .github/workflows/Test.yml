@@ -32,8 +32,6 @@ jobs:
           - x64
         allow_failure: [false]
 
-        name: Julia CI
-
   # julia-ci:
   #   uses: julia-vscode/testitem-workflow/.github/workflows/juliaci.yml@v1
   #   permissions: write-all
