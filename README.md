@@ -9,21 +9,12 @@
 [![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 [![code style: runic](https://img.shields.io/badge/code_style-%E1%9A%B1%E1%9A%A2%E1%9A%BE%E1%9B%81%E1%9A%B2-black)](https://github.com/fredrikekre/Runic.jl)
 
-A Julia package for kernel regression (regularized kernel interpolation) using various kernel functions. This package implements different kernels that can be used for non-parametric regression and interpolation tasks.
 
 ![Kernel Regression Example](kernel_regression_example.png)
 
 ## Overview
 
-SimpleKernelRegression provides a collection of kernel functions and utilities for performing kernel-based regression. The package supports multiple kernel types and provides both simple functional interfaces and optimized struct-based implementations for performance-critical applications.
-
-## Features
-
-- **Multiple Kernel Types**: Gaussian, Linear, Polynomial, Inverse Multiquadratic (IMQ), Multiquadratic (MQ), and Epanechnikov kernels
-- **Flexible Interface**: Simple functional API and advanced struct-based API for performance
-- **Regularization**: Built-in regularization to handle ill-conditioned problems
-- **Derivatives**: Support for kernel derivative computation for selected kernels
-- **Optimized Performance**: Uses platform-specific BLAS libraries (AppleAccelerate on Apple Silicon, MKL on Intel)
+SimpleKernelRegression is just my own simple kernel regression. Doesn't do more, doesn't do less. 
 
 ## Installation
 
@@ -119,38 +110,6 @@ f_deriv = get_kernel_derivative_interpolant(X_train, Y_train, gaussian_kernel, 1
 dY_pred = f_deriv(X_test)
 ```
 
-## Example: Comparing Different Kernels
-
-See `scripts/example.jl` for a complete example that compares different kernel types on a linear regression problem.
-
-```julia
-julia> include("scripts/example.jl")
-Plot saved as 'kernel_regression_example.png'
-Mean Squared Error (Gaussian): 0.163
-Mean Squared Error (Linear): 1.010
-Mean Squared Error (IMQ): 0.396
-```
-
-## Mathematical Background
-
-This package implements regularized kernel interpolation, which solves:
-
-```
-f(x) = Σᵢ αᵢ K(x, xᵢ)
-```
-
-where the coefficients α are found by solving:
-```
-(K + λI)α = y
-```
-
-with K being the kernel matrix, λ the regularization parameter, and y the target values.
-
-## Performance Notes
-
-- The package automatically selects optimized BLAS libraries based on your system
-- For large datasets, consider using the struct-based `KernelInterpolant` interface
-- Regularization parameter should be chosen based on noise level and desired smoothness
 
 ## Contributing
 
