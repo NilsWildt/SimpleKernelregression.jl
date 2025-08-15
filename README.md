@@ -18,8 +18,8 @@ SimpleKernelRegression is just my own simple kernel regression. Doesn't do more,
 
 ## Main sources
 
-* [https://gabrielesantin.github.io/files/approximation_with_kernel_methods.pdf](https://gabrielesantin.github.io/files/approximation_with_kernel_methods.pdf)
-* [https://github.com/GabrieleSantin/VKOGA/tree/master)](https://github.com/GabrieleSantin/VKOGA/tree/master)
+* [https://gabrielesantin.github.io/files/approximation_with_kernel_methods.pdf](https://gabrielesantin.github.io/files/approximation_with_kernel_methods.pdf )
+* [https://github.com/GabrieleSantin/VKOGA/tree/master)](https://github.com/GabrieleSantin/VKOGA/tree/master )
 
 Further Literature
 1. H. Wendland. "Scattered Data Approximation", Cambridge Monographs on Applied and Computational Mathematics, 2005.
@@ -29,10 +29,55 @@ Further Literature
 
 ## Installation
 
+Since this package is not yet in the Julia General Registry, you'll need to install it as a development dependency. Here are the different ways to do this:
+
+### Option 1: Install from GitHub (Recommended)
+
 ```julia
 using Pkg
-Pkg.add("SimpleKernelRegression")
+Pkg.add(url="https://github.com/NilsWildt/SimpleKernelRegression.jl.git")
 ```
+
+### Option 2: Add as Development Dependency
+
+If you want to track the latest development version:
+
+```julia
+using Pkg
+Pkg.develop(url="https://github.com/NilsWildt/SimpleKernelRegression.jl.git")
+```
+
+### Option 3: Clone and Add Locally
+
+```bash
+# Clone the repository
+git clone https://github.com/NilsWildt/SimpleKernelRegression.jl.git
+cd SimpleKernelRegression.jl
+
+# Start Julia and add the package
+julia --project=.
+```
+
+Then in Julia:
+```julia
+using Pkg
+Pkg.instantiate()
+```
+
+### Option 4: Add to Project.toml Manually
+
+Add this to your `Project.toml` dependencies section:
+```toml
+[deps]
+SimpleKernelRegression = "https://github.com/NilsWildt/SimpleKernelRegression.jl.git"
+```
+
+Then run:
+```julia
+using Pkg
+Pkg.instantiate()
+```
+
 
 ## Quick Start
 
