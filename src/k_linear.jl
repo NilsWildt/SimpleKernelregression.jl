@@ -49,3 +49,23 @@ end
 function evalKernel(linear::Linear, x)
     throw("[-]\nNot implemented.")
 end
+
+"""
+    evalKmatrix_derivative(linear::Linear, x::AbstractArray, y::AbstractArray)
+
+Compute the derivative of the Linear kernel matrix.
+
+For the Linear kernel K(x,y) = <x,y> (or <[1;x],[1;y]> with bias), 
+the derivative with respect to the dot product is simply 1.
+
+# Arguments
+- `linear::Linear`: Linear kernel
+- `x::AbstractArray`: First set of points (n × d matrix)
+- `y::AbstractArray`: Second set of points (m × d matrix)
+
+# Returns
+- Matrix of ones of size (n, m) since dK/d(<x,y>) = 1
+"""
+function evalKmatrix_derivative(linear::Linear, x::AbstractArray, y::AbstractArray)
+    return ones(size(x, 1), size(y, 1))
+end

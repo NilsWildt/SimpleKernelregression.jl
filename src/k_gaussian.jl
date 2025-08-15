@@ -34,7 +34,7 @@ Gaussian(σ::T) where {T} = Gaussian{T}(σ)
 
 Internal function to evaluate Gaussian kernel from precomputed squared distances.
 """
-_evalKmatrix(gaussian::Gaussian, xy_dist) =  @.  exp(-1.0 / (2.0 .* gaussian.σ^2) * xy_dist)
+_evalKmatrix(gaussian::Gaussian, xy_dist) = @.  exp(-1.0 / (2.0 .* gaussian.σ^2) * xy_dist)
 
 """
     evalKmatrix(gaussian::Gaussian, x::AbstractArray, y::AbstractArray)

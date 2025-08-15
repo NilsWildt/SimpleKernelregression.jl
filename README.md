@@ -14,7 +14,18 @@
 
 ## Overview
 
-SimpleKernelRegression is just my own simple kernel regression. Doesn't do more, doesn't do less. 
+SimpleKernelRegression is just my own simple kernel regression. Doesn't do more, doesn't do less. Not everything is yet throughfully tested -- Interpolation and Regression are solid.
+
+## Main sources
+
+* [](https://gabrielesantin.github.io/files/approximation_with_kernel_methods.pdf)
+* [](https://github.com/GabrieleSantin/VKOGA/tree/master)
+
+Further Literature
+1. H. Wendland. "Scattered Data Approximation", Cambridge Monographs on Applied and Computational Mathematics, 2005.
+2. B. Schölkopf and A. J. Smola. "Learning with Kernels: Support Vector Machines, Regularization, Optimization and Beyond", MIT Press, 2002.
+3. G. E. Fasshauer. "Meshfree Approximation Methods with MATLAB", World Scientific Publishing, 2007.
+
 
 ## Installation
 
