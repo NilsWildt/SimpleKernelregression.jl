@@ -173,7 +173,7 @@ end
 function marginal_log_likelihood(θ, X::AbstractArray{T}, Y::AbstractArray{R}, KernelType, reg::Real = 1.0e-5) where {T <: Real, R <: Real}
     σ = θ[1]
     kernel = KernelType(σ)
-    K = evalKmatrix(kernel, X, X) .+ reg .* I
+    K = evalKmatrix(kernel, X, X) .+ reg .* Matrix(I, size(X, 1), size(X, 1))
     L = nothing
     try
         L = cholesky(K).L
