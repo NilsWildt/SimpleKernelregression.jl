@@ -1,13 +1,28 @@
-# Define datatypes for kernels
-""" 
-k_Linear <: Kernel
-Linear kernel
+"""
+    Linear <: SKernel
+
+Linear kernel implementation.
+
+The linear kernel is defined as:
 ```math
-K(x,y) = (x,y)
+K(x,y) = \\langle x,y \\rangle
 ```
-(.,.) is the inner product. No offset --> affine.
+or with bias term:
+```math
+K(x,y) = \\langle [1;x],[1;y] \\rangle
+```
+
+# Fields
+- `calc_bias::Bool`: Whether to include bias term (prepend 1 to feature vectors)
+
+# Example
+```julia
+kernel = Linear(true)   # with bias
+kernel = Linear(false)  # without bias
+```
 """
 @concrete struct Linear <: SKernel
+    "Whether to include bias term"
     calc_bias::Bool
 end
 
@@ -17,6 +32,7 @@ _evalKmatrix(linear::Linear, xTy) = xTy
 function evalKmatrix(linear::Linear, x::AbstractArray, y::AbstractArray)
     if linear.calc_bias
         x = prepend_one(x)
+        y = prepend_one(y)
     end
     return K = _evalKmatrix(linear, kernel_dot(x, y)) # Do the inner product and get the polynomial Kernel Matrix
 end

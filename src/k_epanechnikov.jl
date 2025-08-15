@@ -1,30 +1,28 @@
 # Define datatypes for kernels
 """ 
-Epanechnikov <: Kernel
+Epanechnikov <: SKernel
 Epanechnikov kernel
 ```math
-K(x,y) = 
+K(x,y) = \\frac{3}{4} \\left(1 - \\frac{\\|x-y\\|^2}{h^2}\\right) \\mathbf{1}_{\\{\\|x-y\\| \\leq h\\}}
 ```
-scaling factor ``sigma``.
+where `h` is the bandwidth parameter.
 """
 
 @concrete mutable struct Epanechnikov <: SKernel
-    "Scaling"
-    σ::Float64 # Überbleibsel
+    "Bandwidth parameter"
+    h::Float64
 end
 
-# Constructor of the struct above.
-# Epanechnikov(σ::T) where T = Epanechnikov{T}(σ, [])
 
-_evalKmatrix(epanechnikov::Epanechnikov, xy_dist) = @fastmath @. epanechnikov.σ .* 3 / 4 * (1 - xy_dist) * float(abs(xy_dist) <= 1.0)
+_evalKmatrix(epanechnikov::Epanechnikov, xy_dist) = @fastmath @. 3/4 * (1 - (xy_dist / epanechnikov.h)^2) * float(xy_dist <= epanechnikov.h)
 
 function evalKmatrix(epanechnikov::Epanechnikov, x::AbstractArray, y::AbstractArray)
-    xy_dist = pDist2Squared(x, y)
-    return K = _evalKmatrix(epanechnikov, xy_dist) # Do the inner product and get the polynomial Kernel Matrix
+    xy_dist = pDist2(x, y)  # Use actual distances, not squared
+    return K = _evalKmatrix(epanechnikov, xy_dist)
 end
 
 function evalKernel(epanechnikov::Epanechnikov, x)
-    return epanechnikov.σ .* (3 / 4 .* (1 .- x) .* float(abs.(x) .<= 1.0))
+    return @. 3/4 * (1 - x^2 / (epanechnikov.h^2)) * float(abs(x) <= epanechnikov.h)
 end
 
 Base.String(::Epanechnikov) = "k_epanechnikov"

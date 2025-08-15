@@ -20,8 +20,20 @@ end
 
 
 using TestItems
+
 abstract type SKernel end
+
+"""
+Solver methods for kernel regression systems.
+"""
+@enum SolverMethod begin
+    BackslashSolver  # Default: K \\ Y (LU factorization)
+    PinvSolver      # Pseudoinverse: pinv(K) * Y
+    LevenbergMarquardtSolver  # Levenberg-Marquardt with adaptive regularization
+end
+
 export get_kernel_interpolant, get_kernel_derivative_interpolant, SKernel, Gaussian, Imq, Linear, Polynomial, Mq, Epanechnikov
+export SolverMethod, BackslashSolver, PinvSolver, LevenbergMarquardtSolver
 
 
 include("k_gaussian.jl")
@@ -32,16 +44,34 @@ include("k_mq.jl")
 include("k_epanechnikov.jl")
 
 
+"""
+    prepend_one(X::AbstractArray)
+
+Prepend a column of ones to the input matrix X for bias terms in linear kernels.
+
+# Arguments
+- `X::AbstractArray`: Input matrix (n × d)
+
+# Returns
+- Matrix of size (n, d+1) with ones prepended as the first column
+"""
 function prepend_one(X::AbstractArray)
     return X = cat(ones(size(X, 1)), X; dims = 2)
 end
 
 """
-pDist2
-pairwise euclidean distance
-```math
-(x - y) = sqrt(x ^ 2 + y ^ 2 - 2 * x * y)
-```
+    pDist2(X::AbstractArray, Y::AbstractArray)
+
+Compute pairwise Euclidean distances between points in X and Y.
+
+Uses the identity: ||x - y||² = ||x||² + ||y||² - 2⟨x,y⟩
+
+# Arguments
+- `X::AbstractArray`: First set of points (n × d matrix)
+- `Y::AbstractArray`: Second set of points (m × d matrix)
+
+# Returns
+- Matrix of size (n, m) containing pairwise distances ||xᵢ - yⱼ||
 """
 function pDist2(X::AbstractArray, Y::AbstractArray)
     Dsq = pDist2Squared(X, Y)
@@ -49,6 +79,21 @@ function pDist2(X::AbstractArray, Y::AbstractArray)
 end
 
 
+"""
+    pDist2Squared(X::AbstractArray{T}, Y::AbstractArray{R}) where {T <: Real, R <: Real}
+
+Compute pairwise squared Euclidean distances between points in X and Y.
+
+Efficiently computes ||x - y||² using the identity:
+||x - y||² = ||x||² + ||y||² - 2⟨x,y⟩
+
+# Arguments
+- `X::AbstractArray{T}`: First set of points (n × d matrix)
+- `Y::AbstractArray{R}`: Second set of points (m × d matrix)
+
+# Returns
+- Matrix of size (n, m) containing pairwise squared distances ||xᵢ - yⱼ||²
+"""
 function pDist2Squared(X::AbstractArray{T}, Y::AbstractArray{R}) where {T <: Real, R <: Real}
     # (x - y) ^ 2 = x ^ 2 + y ^ 2 - 2 * x * y
     Ly = size(Y, 1)
@@ -74,38 +119,212 @@ function pDist2Squared(X::AbstractArray{T}, Y::AbstractArray{R}) where {T <: Rea
 end
 
 
-# Inner-product matrix helper for linear/polynomial kernels
+"""
+    kernel_dot(X::AbstractArray{T}, Y::AbstractArray{R}) where {T <: Real, R <: Real}
+
+Compute inner product matrix for linear/polynomial kernels.
+
+# Arguments
+- `X::AbstractArray{T}`: First set of points (n × d matrix)
+- `Y::AbstractArray{R}`: Second set of points (m × d matrix)
+
+# Returns
+- Matrix of size (n, m) containing inner products ⟨xᵢ, yⱼ⟩
+"""
 function kernel_dot(X::AbstractArray{T}, Y::AbstractArray{R}) where {T <: Real, R <: Real}
     return X * Y'
 end
 
-# If Y is already an Adjoint, avoid double-transpose
+"""
+    kernel_dot(X::AbstractArray{T}, Y::Adjoint) where {T <: Real}
+
+Optimized version when Y is already transposed to avoid double-transpose.
+"""
 function kernel_dot(X::AbstractArray{T}, Y::Adjoint) where {T <: Real}
     return X * Y
 end
 
 
+"""
+    regularize!(K::AbstractMatrix, reg::Real = 1.0e-6)
+
+Add regularization to kernel matrix K in-place: K := K + reg*I.
+
+# Arguments
+- `K::AbstractMatrix`: Kernel matrix to regularize (modified in-place)
+- `reg::Real`: Regularization parameter (default: 1e-6)
+
+# Returns
+- The modified matrix K
+"""
 function regularize!(K::AbstractMatrix, reg::Real = 1.0e-6)
     return K .+= reg .* Matrix(I, size(K, 1), size(K, 2))
 end
 
+"""
+    regularize(K::AbstractMatrix, reg::Real = 1.0e-6)
+
+Add regularization to kernel matrix K: returns K + reg*I.
+
+# Arguments
+- `K::AbstractMatrix`: Kernel matrix
+- `reg::Real`: Regularization parameter (default: 1e-6)
+
+# Returns
+- New regularized matrix K + reg*I
+"""
 function regularize(K::AbstractMatrix, reg::Real = 1.0e-6)
     return K .+ reg .* Matrix(I, size(K, 1), size(K, 2))
 end
 
+"""
+    solve_kernel_system(K::AbstractMatrix, Y::AbstractArray; solver::SolverMethod=BackslashSolver, kwargs...)
 
-function get_kernel_interpolant(X::AbstractArray, Y::AbstractArray, mykernel::SKernel, reg::Real = 1.0e-6)
+Solve the kernel system K * α = Y using the specified solver method.
+
+# Arguments
+- `K::AbstractMatrix`: Kernel matrix (n × n)
+- `Y::AbstractArray`: Target values (n × m)
+- `solver::SolverMethod`: Solver method to use (default: BackslashSolver)
+- `kwargs...`: Additional solver-specific parameters
+
+# Solver-specific kwargs
+- `LevenbergMarquardtSolver`: `λ_init=1e-3`, `max_iter=50`
+
+# Returns
+- Solution coefficients α such that K * α ≈ Y
+"""
+function solve_kernel_system(K::AbstractMatrix, Y::AbstractArray; solver::SolverMethod=BackslashSolver, kwargs...)
+    if solver == BackslashSolver
+        return _solve_backslash(K, Y)
+    elseif solver == PinvSolver
+        return _solve_pinv(K, Y)
+    elseif solver == LevenbergMarquardtSolver
+        return _solve_levenberg_marquardt(K, Y; kwargs...)
+    else
+        error("Unknown solver method: $solver")
+    end
+end
+
+"""
+    _solve_backslash(K::AbstractMatrix, Y::AbstractArray)
+
+Solve using Julia's backslash operator (LU factorization).
+"""
+function _solve_backslash(K::AbstractMatrix, Y::AbstractArray)
+    return K \ Y
+end
+
+"""
+    _solve_pinv(K::AbstractMatrix, Y::AbstractArray)
+
+Solve using pseudoinverse. Robust for ill-conditioned matrices.
+"""
+function _solve_pinv(K::AbstractMatrix, Y::AbstractArray)
+    return pinv(K) * Y
+end
+
+"""
+    _solve_levenberg_marquardt(K::AbstractMatrix, Y::AbstractArray; λ_init=1e-3, max_iter=50)
+
+Solve using Levenberg-Marquardt algorithm with adaptive regularization.
+This is equivalent to solving (K + λI) \\ Y with adaptive λ.
+
+# Arguments
+- `K::AbstractMatrix`: System matrix
+- `Y::AbstractArray`: Right-hand side
+- `λ_init::Real`: Initial damping parameter (default: 1e-3)
+- `max_iter::Int`: Maximum iterations (default: 50)
+"""
+function _solve_levenberg_marquardt(K::AbstractMatrix, Y::AbstractArray; λ_init=1e-3, max_iter=50)
+    # For linear case, this reduces to regularized least squares with adaptive λ
+    x = pinv(K) * Y  # Initial guess
+    λ = λ_init
+    
+    for iter in 1:max_iter
+        residual = K * x - Y
+        
+        # Try step with current λ
+        δx = -((K' * K + λ * I) \ (K' * residual))
+        x_new = x + δx
+        
+        new_residual = K * x_new - Y
+        
+        # Accept/reject step and adjust λ
+        if norm(new_residual) < norm(residual)
+            x = x_new
+            λ *= 0.3  # Decrease damping
+        else
+            λ *= 2.0  # Increase damping
+        end
+        
+        if norm(δx) < 1e-15
+            break
+        end
+    end
+    
+    return x
+end
+
+
+"""
+    get_kernel_interpolant(X::AbstractArray, Y::AbstractArray, mykernel::SKernel; 
+                          reg::Real=1.0e-6, solver::SolverMethod=BackslashSolver, kwargs...)
+
+Create a kernel interpolant function for regression.
+
+Solves the kernel regression problem: find coefficients α such that
+f(x) = Σᵢ αᵢ K(x, xᵢ) ≈ y
+
+# Arguments
+- `X::AbstractArray`: Training input points (n × d matrix)
+- `Y::AbstractArray`: Training target values (n × m matrix)
+- `mykernel::SKernel`: Kernel function to use
+- `reg::Real`: Regularization parameter (default: 1e-6)
+- `solver::SolverMethod`: Solver method (default: BackslashSolver)
+- `kwargs...`: Additional solver-specific parameters
+
+# Returns
+- Function that takes new points and returns predictions
+
+# Example
+```julia
+kernel = Gaussian(1.0)
+f = get_kernel_interpolant(X_train, Y_train, kernel; solver=PinvSolver)
+Y_pred = f(X_test)
+```
+"""
+function get_kernel_interpolant(X::AbstractArray, Y::AbstractArray, mykernel::SKernel; 
+                               reg::Real=1.0e-6, solver::SolverMethod=BackslashSolver, kwargs...)
     K = evalKmatrix(mykernel, X, X)
     K = regularize(K, reg)
-    facts = (K \ Y)
+    facts = solve_kernel_system(K, Y; solver=solver, kwargs...)
     fxnew(xnew) = evalKmatrix(mykernel, xnew, X) * facts
     return fxnew
 end
 
-function get_kernel_derivative_interpolant(X::AbstractArray, Y::AbstractArray, mykernel::SKernel, reg::Real = 1.0e-6)
+"""
+    get_kernel_derivative_interpolant(X::AbstractArray, Y::AbstractArray, mykernel::SKernel; 
+                                     reg::Real=1.0e-6, solver::SolverMethod=BackslashSolver, kwargs...)
+
+Create a kernel derivative interpolant function.
+
+# Arguments
+- `X::AbstractArray`: Training input points (n × d matrix)  
+- `Y::AbstractArray`: Training target values (n × m matrix)
+- `mykernel::SKernel`: Kernel function (must support evalKmatrix_derivative)
+- `reg::Real`: Regularization parameter (default: 1e-6)
+- `solver::SolverMethod`: Solver method (default: BackslashSolver)
+- `kwargs...`: Additional solver-specific parameters
+
+# Returns
+- Function that takes new points and returns derivative predictions
+"""
+function get_kernel_derivative_interpolant(X::AbstractArray, Y::AbstractArray, mykernel::SKernel; 
+                                          reg::Real=1.0e-6, solver::SolverMethod=BackslashSolver, kwargs...)
     K = evalKmatrix(mykernel, X, X)
     K = regularize(K, reg)
-    facts = (K \ Y)
+    facts = solve_kernel_system(K, Y; solver=solver, kwargs...)
     fxnew_derivative(xnew) = evalKmatrix_derivative(mykernel, xnew, X) * facts
     return fxnew_derivative
 end
@@ -170,23 +389,27 @@ function (interp::KernelDerivativeInterpolant{T})(xnew::AbstractArray) where {T 
 end
 
 
-# Derivatives for selected kernels
-function evalKmatrix_derivative(gaussian::Gaussian, x::AbstractArray, y::AbstractArray)
-    xy_dist = pDist2Squared(x, y)
-    K = _evalKmatrix(gaussian, xy_dist)
-    dK = @. (-1.0 / gaussian.σ^2) * xy_dist * K
-    return dK
-end
-
-function evalKmatrix_derivative(imq::Imq, x::AbstractArray, y::AbstractArray)
-    xy_dist = pDist2Squared(x, y)
-    # ϕ(r) = (1 + (r/σ)^2)^(-1/2); derivative wrt r^2 scales similarly for matrix form
-    dϕ(r) = -0.5 * (1 + (r / imq.σ)^2)^(-1.5) * (1 / imq.σ^2)
-    return dϕ.(xy_dist)
-end
 
 
-function marginal_log_likelihood(θ, X::AbstractArray{T}, Y::AbstractArray{R}, KernelType, reg::Real = 1.0e-5) where {T <: Real, R <: Real}
+"""
+    marginal_log_likelihood(θ, X::AbstractArray{T}, Y::AbstractArray{R}, KernelType; reg::Real = 1.0e-5) where {T <: Real, R <: Real}
+
+Compute the marginal log-likelihood for kernel regression with given hyperparameters.
+
+This function is useful for hyperparameter optimization via maximum likelihood estimation.
+The marginal likelihood is: p(Y|X,θ) = N(0, K + σₙ²I) where K is the kernel matrix.
+
+# Arguments
+- `θ`: Vector of hyperparameters (typically [σ] for kernel bandwidth)
+- `X::AbstractArray{T}`: Training input points (n × d matrix)
+- `Y::AbstractArray{R}`: Training target values (n × m matrix)
+- `KernelType`: Kernel constructor (e.g., Gaussian, Imq)
+- `reg::Real`: Noise/regularization parameter (default: 1e-5)
+
+# Returns
+- Negative log marginal likelihood (for minimization)
+"""
+function marginal_log_likelihood(θ, X::AbstractArray{T}, Y::AbstractArray{R}, KernelType; reg::Real = 1.0e-5) where {T <: Real, R <: Real}
     σ = θ[1]
     kernel = KernelType(σ)
     K = evalKmatrix(kernel, X, X) .+ reg .* Matrix(I, size(X, 1), size(X, 1))
@@ -260,13 +483,13 @@ end
     σ = 1.0
     reg = 1.0e-6
     gaussian = Gaussian(σ)
-    interpolant = SimpleKernelRegression.get_kernel_interpolant(X, Y, gaussian, reg)
+    interpolant = SimpleKernelRegression.get_kernel_interpolant(X, Y, gaussian; reg=reg)
     X_test = rand(5, 2)
     Y_pred = interpolant(X_test)
     @test size(Y_pred) == (5, 1)
     @test all(isfinite, Y_pred)
     imq = Imq(σ)
-    interpolant2 = SimpleKernelRegression.get_kernel_interpolant(X, Y, imq, reg)
+    interpolant2 = SimpleKernelRegression.get_kernel_interpolant(X, Y, imq; reg=reg)
     Y_pred2 = interpolant2(X_test)
     @test size(Y_pred2) == (5, 1)
     @test all(isfinite, Y_pred2)
@@ -280,13 +503,13 @@ end
     σ = 1.0
     reg = 1.0e-6
     gaussian = Gaussian(σ)
-    interpolant = SimpleKernelRegression.get_kernel_derivative_interpolant(X, Y, gaussian, reg)
+    interpolant = SimpleKernelRegression.get_kernel_derivative_interpolant(X, Y, gaussian; reg=reg)
     X_test = rand(5, 2)
     Y_pred = interpolant(X_test)
     @test size(Y_pred) == (5, 1)
     @test all(isfinite, Y_pred)
     imq = Imq(σ)
-    interpolant2 = SimpleKernelRegression.get_kernel_derivative_interpolant(X, Y, imq, reg)
+    interpolant2 = SimpleKernelRegression.get_kernel_derivative_interpolant(X, Y, imq; reg=reg)
     Y_pred2 = interpolant2(X_test)
     @test size(Y_pred2) == (5, 1)
     @test all(isfinite, Y_pred2)

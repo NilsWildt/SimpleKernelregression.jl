@@ -27,3 +27,26 @@ end
 
 
 Base.String(::Imq) = "k_imq"
+
+"""
+    evalKmatrix_derivative(imq::Imq, x::AbstractArray, y::AbstractArray)
+
+Compute the derivative of the Inverse Multiquadratic (IMQ) kernel matrix.
+
+For the IMQ kernel K(x,y) = (1 + ||x-y||²/σ²)^(-1/2), the derivative with respect to ||x-y||² is:
+dK/d(||x-y||²) = -1/(2σ²) * (1 + ||x-y||²/σ²)^(-3/2)
+
+# Arguments
+- `imq::Imq`: IMQ kernel with scaling parameter σ
+- `x::AbstractArray`: First set of points (n × d matrix)
+- `y::AbstractArray`: Second set of points (m × d matrix)
+
+# Returns
+- Matrix of size (n, m) containing the kernel derivative values
+"""
+function evalKmatrix_derivative(imq::Imq, x::AbstractArray, y::AbstractArray)
+    xy_dist = pDist2Squared(x, y)
+    # ϕ(r) = (1 + (r/σ)^2)^(-1/2); derivative wrt r^2 scales similarly for matrix form
+    dϕ(r) = -0.5 * (1 + (r / imq.σ)^2)^(-1.5) * (1 / imq.σ^2)
+    return dϕ.(xy_dist)
+end
