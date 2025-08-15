@@ -14,7 +14,7 @@ where `h` is the bandwidth parameter.
 end
 
 
-_evalKmatrix(epanechnikov::Epanechnikov, xy_dist) = @fastmath @. 3/4 * (1 - (xy_dist / epanechnikov.h)^2) * float(xy_dist <= epanechnikov.h)
+_evalKmatrix(epanechnikov::Epanechnikov, xy_dist) =  @. 3/4 * (1 - (xy_dist / epanechnikov.h)^2) * float(xy_dist <= epanechnikov.h)
 
 function evalKmatrix(epanechnikov::Epanechnikov, x::AbstractArray, y::AbstractArray)
     xy_dist = pDist2(x, y)  # Use actual distances, not squared

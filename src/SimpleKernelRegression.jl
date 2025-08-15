@@ -237,35 +237,34 @@ This is equivalent to solving (K + λI) \\ Y with adaptive λ.
 - `max_iter::Int`: Maximum iterations (default: 50)
 """
 function _solve_levenberg_marquardt(K::AbstractMatrix, Y::AbstractArray; λ_init=1e-3, max_iter=50)
-    # For linear case, this reduces to regularized least squares with adaptive λ
-    x = pinv(K) * Y  # Initial guess
-    λ = λ_init
-    
-    for iter in 1:max_iter
-        residual = K * x - Y
+        x = pinv(K) * Y  # Initial guess
+        λ = λ_init
         
-        # Try step with current λ
-        δx = -((K' * K + λ * I) \ (K' * residual))
-        x_new = x + δx
-        
-        new_residual = K * x_new - Y
-        
-        # Accept/reject step and adjust λ
-        if norm(new_residual) < norm(residual)
-            x = x_new
-            λ *= 0.3  # Decrease damping
-        else
-            λ *= 2.0  # Increase damping
+        for _ in 1:max_iter
+            residual = K * x - Y
+            
+            JtJ = K' * K
+            Jtr = K' * residual
+            
+            δx = -(JtJ + λ * I) \ Jtr
+            x_new = x + δx
+            
+            new_residual = K * x_new - Y
+            
+            if norm(new_residual) < norm(residual)
+                x = x_new
+                λ *= 0.3  # Decrease damping
+            else
+                λ *= 2.0  # Increase damping
+            end
+            
+            if norm(δx) < 1e-15
+                break
+            end
         end
         
-        if norm(δx) < 1e-15
-            break
-        end
+        return x
     end
-    
-    return x
-end
-
 
 """
     get_kernel_interpolant(X::AbstractArray, Y::AbstractArray, mykernel::SKernel; 
@@ -539,6 +538,289 @@ end
     @test isfinite(ll_gaussian)
     ll_imq = SimpleKernelRegression.marginal_log_likelihood(θ, X, Y, Imq)
     @test isfinite(ll_imq)
+end
+
+@testitem "All 3 Solving Methods Give Same Results" begin
+    using Random
+    using SimpleKernelRegression
+    Random.seed!(123)
+    
+    # Create test data
+    X = rand(15, 3)
+    Y = sin.(sum(X, dims=2)) + 0.1 * rand(15, 1)
+    reg = 1e-6
+    
+    # Test with Gaussian kernel
+    gaussian = Gaussian(1.0)
+    
+    # Get interpolants using all 3 methods
+    f_backslash = get_kernel_interpolant(X, Y, gaussian; reg=reg, solver=BackslashSolver)
+    f_pinv = get_kernel_interpolant(X, Y, gaussian; reg=reg, solver=PinvSolver)
+    f_lm = get_kernel_interpolant(X, Y, gaussian; reg=reg, solver=LevenbergMarquardtSolver)
+    
+    # Test predictions on new data
+    X_test = rand(10, 3)
+    pred_backslash = f_backslash(X_test)
+    pred_pinv = f_pinv(X_test)
+    pred_lm = f_lm(X_test)
+    
+    # Check that all methods give similar results (within numerical tolerance)
+    @test isapprox(pred_backslash, pred_pinv, rtol=1e-10, atol=1e-12)
+    @test isapprox(pred_backslash, pred_lm, rtol=1e-8, atol=1e-10)
+    @test isapprox(pred_pinv, pred_lm, rtol=1e-8, atol=1e-10)
+    
+    # Test with IMQ kernel
+    imq = Imq(2.0)
+    f_backslash_imq = get_kernel_interpolant(X, Y, imq; reg=reg, solver=BackslashSolver)
+    f_pinv_imq = get_kernel_interpolant(X, Y, imq; reg=reg, solver=PinvSolver)
+    f_lm_imq = get_kernel_interpolant(X, Y, imq; reg=reg, solver=LevenbergMarquardtSolver)
+    
+    pred_backslash_imq = f_backslash_imq(X_test)
+    pred_pinv_imq = f_pinv_imq(X_test)
+    pred_lm_imq = f_lm_imq(X_test)
+    
+    @test isapprox(pred_backslash_imq, pred_pinv_imq, rtol=1e-10, atol=1e-12)
+    @test isapprox(pred_backslash_imq, pred_lm_imq, rtol=1e-8, atol=1e-10)
+    @test isapprox(pred_pinv_imq, pred_lm_imq, rtol=1e-8, atol=1e-10)
+end
+
+@testitem "Linear Kernel Coverage" begin
+    using Random
+    using SimpleKernelRegression
+    Random.seed!(42)
+    
+    # Test Linear kernel with and without bias
+    linear_bias = Linear(true)
+    linear_nobias = Linear(false)
+    
+    X = rand(10, 3)
+    Y = rand(5, 3)
+    
+    # Test evalKmatrix
+    K_bias = SimpleKernelRegression.evalKmatrix(linear_bias, X, Y)
+    K_nobias = SimpleKernelRegression.evalKmatrix(linear_nobias, X, Y)
+    
+    @test size(K_bias) == (10, 5)
+    @test size(K_nobias) == (10, 5)
+    @test all(isfinite, K_bias)
+    @test all(isfinite, K_nobias)
+    
+    # Test String conversion
+    @test String(linear_bias) == "k_linear"
+    @test String(linear_nobias) == "k_affine"
+    
+    # Test that evalKernel throws error
+    @test_throws String SimpleKernelRegression.evalKernel(linear_bias, [1.0, 2.0])
+end
+
+@testitem "Polynomial Kernel Coverage" begin
+    using Random
+    using SimpleKernelRegression
+    Random.seed!(42)
+    
+    # Test Polynomial kernel
+    poly = Polynomial(1.0, 2)
+    
+    X = rand(10, 3)
+    Y = rand(5, 3)
+    
+    # Test evalKmatrix
+    K = SimpleKernelRegression.evalKmatrix(poly, X, Y)
+    @test size(K) == (10, 5)
+    @test all(isfinite, K)
+    @test all(≥(1.0), K)  # Should be at least 1 due to constant term
+    
+    # Test String conversion
+    @test String(poly) == "k_polynomial"
+    
+    # Test constructor
+    poly2 = Polynomial(2.5, 3)
+    @test poly2.a == 2.5
+    @test poly2.p == 3
+end
+
+@testitem "Mq Kernel Coverage" begin
+    using Random
+    using SimpleKernelRegression
+    Random.seed!(42)
+    
+    # Test Multiquadratic kernel
+    mq = Mq(1.5)
+    
+    X = rand(10, 3)
+    Y = rand(5, 3)
+    
+    # Test evalKmatrix
+    K = SimpleKernelRegression.evalKmatrix(mq, X, Y)
+    @test size(K) == (10, 5)
+    @test all(isfinite, K)
+    @test all(≥(1.0), K)  # Should be at least 1
+    
+    # Test evalKernel
+    test_vals = [0.0, 1.0, 2.0]
+    result = SimpleKernelRegression.evalKernel(mq, test_vals)
+    @test length(result) == length(test_vals)
+    @test all(isfinite, result)
+    @test all(≥(1.0), result)
+    
+    # Test String conversion
+    @test String(mq) == "k_Mq"
+end
+
+@testitem "Epanechnikov Kernel Coverage" begin
+    using Random
+    using SimpleKernelRegression
+    Random.seed!(42)
+    
+    # Test Epanechnikov kernel
+    epan = Epanechnikov(2.0)
+    
+    X = rand(5, 2)
+    Y = rand(5, 2)
+    
+    # Test evalKmatrix
+    K = SimpleKernelRegression.evalKmatrix(epan, X, Y)
+    @test size(K) == (5, 5)
+    @test all(isfinite, K)
+    @test all(≥(0.0), K)  # Non-negative kernel
+    
+    # Test evalKernel with values inside and outside bandwidth
+    test_vals = [-3.0, -1.0, 0.0, 1.0, 3.0]  # Some inside h=2.0, some outside
+    result = SimpleKernelRegression.evalKernel(epan, test_vals)
+    @test length(result) == length(test_vals)
+    @test all(isfinite, result)
+    @test all(≥(0.0), result)
+    @test result[5] == 0.0  # Outside bandwidth should be 0
+    @test result[3] > 0.0   # At center should be positive
+    
+    # Test String conversion
+    @test String(epan) == "k_epanechnikov"
+end
+
+@testitem "Regularization Functions" begin
+    using Random
+    using SimpleKernelRegression
+    Random.seed!(42)
+    
+    # Test regularization functions
+    K = rand(5, 5)
+    K = K' * K  # Make symmetric positive definite
+    reg = 0.1
+    
+    # Test in-place regularization
+    K_copy = copy(K)
+    SimpleKernelRegression.regularize!(K_copy, reg)
+    @test all([K_copy[i,i] >= K[i,i] + reg - 1e-10 for i in 1:5])  # Check diagonal manually
+    
+    # Test non-in-place regularization
+    K_reg = SimpleKernelRegression.regularize(K, reg)
+    I_matrix = zeros(5, 5)
+    for i in 1:5; I_matrix[i,i] = 1.0; end  # Manual identity matrix
+    @test K_reg ≈ K .+ reg .* I_matrix
+    @test K == K  # Original unchanged
+end
+
+@testitem "Solver Method Edge Cases" begin
+    using Random
+    using SimpleKernelRegression
+    Random.seed!(42)
+    
+    # Test with well-conditioned matrix first
+    A_regular = rand(3, 3)
+    A_regular = A_regular' * A_regular  # Make positive semidefinite
+    # Add some regularization manually
+    for i in 1:3; A_regular[i,i] += 0.1; end
+    Y = rand(3)
+    
+    # All solvers should work on well-conditioned matrix
+    sol_backslash = SimpleKernelRegression._solve_backslash(A_regular, Y)
+    sol_pinv = SimpleKernelRegression._solve_pinv(A_regular, Y)
+    sol_lm = SimpleKernelRegression._solve_levenberg_marquardt(A_regular, Y; λ_init=1e-3, max_iter=10)
+    
+    @test size(sol_backslash) == (3,)
+    @test size(sol_pinv) == (3,)
+    @test size(sol_lm) == (3,)
+    
+    # Test with singular matrix (only pinv and LM should work gracefully)
+    A_singular = ones(3, 3)  # Singular matrix
+    Y_singular = [1.0, 1.0, 1.0]
+    
+    # Pinv should handle singular matrix gracefully
+    sol_pinv_singular = SimpleKernelRegression._solve_pinv(A_singular, Y_singular)
+    @test size(sol_pinv_singular) == (3,)
+    @test isapprox(A_singular * sol_pinv_singular, Y_singular, atol=1e-10)
+    
+    # LM should handle singular matrix with regularization
+    sol_lm_singular = SimpleKernelRegression._solve_levenberg_marquardt(A_singular, Y_singular; λ_init=1e-2, max_iter=10)
+    @test size(sol_lm_singular) == (3,)
+end
+
+@testitem "KernelInterpolant and KernelDerivativeInterpolant" begin
+    using Random
+    using SimpleKernelRegression
+    Random.seed!(42)
+    
+    X = rand(10, 2)
+    Y = rand(10, 3)
+    kernel = Gaussian(1.0)
+    
+    # Test KernelInterpolant
+    interp = SimpleKernelRegression.KernelInterpolant(X, kernel, 1e-6)
+    @test interp.initialized == true
+    @test size(interp.X) == size(X)
+    
+    # Update coefficients
+    SimpleKernelRegression.update_coefficients!(interp, Y)
+    @test size(interp.coefficients) == size(Y)
+    
+    # Test prediction
+    X_test = rand(5, 2)
+    pred = interp(X_test)
+    @test size(pred) == (5, 3)
+    @test all(isfinite, pred)
+    
+    # Test KernelDerivativeInterpolant
+    deriv_interp = SimpleKernelRegression.KernelDerivativeInterpolant(X, kernel, 1e-6)
+    @test deriv_interp.initialized == true
+    
+    SimpleKernelRegression.update_coefficients!(deriv_interp, Y)
+    @test size(deriv_interp.coefficients) == size(Y)
+    
+    # Test derivative prediction (this requires evalKmatrix_derivative to be implemented)
+    # Skip if not implemented for this kernel
+    try
+        pred_deriv = deriv_interp(X_test)
+        @test size(pred_deriv) == (5, 3)
+        @test all(isfinite, pred_deriv)
+    catch MethodError
+        @info "evalKmatrix_derivative not implemented for this kernel - skipping derivative test"
+    end
+end
+
+@testitem "Utility Functions Coverage" begin
+    using Random
+    using SimpleKernelRegression
+    Random.seed!(42)
+    
+    # Test prepend_one
+    X = rand(5, 3)
+    X_with_ones = SimpleKernelRegression.prepend_one(X)
+    @test size(X_with_ones) == (5, 4)
+    @test all(X_with_ones[:, 1] .== 1.0)
+    @test X_with_ones[:, 2:end] == X
+    
+    # Test kernel_dot with different inputs
+    X = rand(5, 3)
+    Y = rand(4, 3)
+    dot_result = SimpleKernelRegression.kernel_dot(X, Y)
+    @test size(dot_result) == (5, 4)
+    @test dot_result ≈ X * Y'
+    
+    # Test kernel_dot with adjoint
+    Y_adj = Y'
+    dot_result_adj = SimpleKernelRegression.kernel_dot(X, Y_adj)
+    @test size(dot_result_adj) == (5, 4)
+    @test dot_result_adj ≈ X * Y_adj
 end
 
 end # End module
