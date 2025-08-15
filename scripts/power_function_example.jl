@@ -251,10 +251,3 @@ println("   Plot saved as: power_function_analysis.png")
 # Display plot
 display(fig)
 
-println("\n=== Example completed successfully! ===")
-println("\nKey insights:")
-println("- Power function P(x) provides pointwise error bounds")
-println("- Fill distance h measures domain coverage")
-println("- Separation distance q measures point distribution")
-println("- Mesh ratio ρ = h/q measures uniformity")
-println("- Error bounds: |f(x) - s(x)| ≤ P(x) * ||f||_H_K")

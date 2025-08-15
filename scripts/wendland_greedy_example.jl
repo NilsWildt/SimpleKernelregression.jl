@@ -412,11 +412,3 @@ println("   Plot saved as: wendland_greedy_analysis.png")
 
 # Display plot
 display(fig)
-
-println("\n=== Example completed successfully! ===")
-println("\nKey insights:")
-println("- Wendland kernels provide compact support and automatic bandwidth selection")
-println("- Greedy interpolation selects the most informative points using power function")
-println("- Power greedy focuses on geometric coverage, function greedy on approximation error")
-println("- Combined greedy balances both objectives")
-println("- Compact support leads to sparse matrices and computational efficiency")

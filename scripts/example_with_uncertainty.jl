@@ -136,11 +136,5 @@ for (name, result) in results
                     maximum(result["error_bounds"])))
 end
 
-println("\nKey Insights:")
-println("- Power function P(x) measures interpolation uncertainty")
-println("- Large P(x) values indicate high uncertainty (far from training data)")
-println("- Small P(x) values indicate low uncertainty (near training data)")
-println("- Error bounds: |f(x) - s(x)| ≤ P(x) * ||f||_H_K")
-println("- Similar to GP uncertainty, but based on kernel interpolation theory")
 
 display(fig)
