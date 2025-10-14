@@ -6,7 +6,6 @@ using TestItemRunner
 
 @run_package_tests
 
-
 @testset "Aqua.jl" begin
     Aqua.test_all(
       SimpleKernelRegression;
