@@ -19,7 +19,7 @@ Examples:
 using Pkg
 
 println("📚 Building SimpleKernelRegression.jl Documentation")
-println("=" ^ 50)
+println("="^50)
 
 # Check if we're in the right directory
 if !isfile("Project.toml") || !isdir("docs")
@@ -37,7 +37,7 @@ Pkg.instantiate()
 # Add development version of the package
 println("🔗 Adding development version of SimpleKernelRegression...")
 try
-    Pkg.develop(PackageSpec(path="."))
+    Pkg.develop(PackageSpec(path = "."))
 catch e
     println("⚠️  Package already in development mode or error occurred: $e")
 end
@@ -57,16 +57,16 @@ end
 # Check if user wants to serve the documentation
 if length(ARGS) > 0 && ARGS[1] == "serve"
     println("\n🌐 Starting documentation server...")
-    
+
     # Check if LiveServer is available
     try
         using LiveServer
         println("📡 Server starting at: http://localhost:8000")
         println("🔄 The server will auto-reload when files change")
         println("🛑 Press Ctrl+C to stop the server")
-        
+
         # Serve the documentation
-        serve(dir="docs/build", port=8000)
+        serve(dir = "docs/build", port = 8000)
     catch e
         println("❌ Error starting server (LiveServer might not be installed):")
         println(e)
