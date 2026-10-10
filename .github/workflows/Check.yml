@@ -2,23 +2,31 @@ name: Runic formatting
 on:
   push:
     branches:
-      - 'master'
-      - 'release-'
+      - main
     tags:
       - '*'
   pull_request:
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   runic:
     name: Runic
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      # - uses: julia-actions/setup-julia@v2
+      - uses: actions/checkout@v7
+      # - uses: julia-actions/setup-julia@v3
       #   with:
       #     version: '1'
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - uses: fredrikekre/runic-action@v1
         with:
-          version: '1'
+          version: '1.13'
 
 
