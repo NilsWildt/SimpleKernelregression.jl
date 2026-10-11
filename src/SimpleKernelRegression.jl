@@ -115,7 +115,12 @@ function pDist2Squared(X::AbstractArray{T}, Y::AbstractArray{R}) where {T <: Rea
     end
 
     T3 = -2 .* (X * Y')
-    return T1 + T2 + T3
+    # ||x-y||² = ||x||² + ||y||² - 2⟨x,y⟩ is exact in real arithmetic but
+    # cancellation-prone in floating point: for nearly identical points with
+    # large coordinates it can come out slightly negative. Squared distances are
+    # non-negative, and a negative entry breaks every kernel that takes its
+    # square root or a fractional power of it.
+    return max.(T1 .+ T2 .+ T3, zero(S))
 end
 
 
@@ -768,6 +773,16 @@ end
     K_imq = SimpleKernelRegression.evalKmatrix(imq, X, Y)
     @test size(K_imq) == (10, 5)
     @test all(isfinite, K_imq)
+end
+
+@testitem "Squared distances are non-negative" begin
+    using Random
+    # Large coordinates make ||x||² + ||y||² - 2⟨x,y⟩ cancel to small negative
+    # values for (nearly) identical points.
+    X = 1.0e6 .+ rand(Xoshiro(1), 20, 3)
+    D = SimpleKernelRegression.pDist2Squared(X, X)
+    @test all(>=(0), D)
+    @test all(isfinite, SimpleKernelRegression.evalKernel(Imq(1.0e-3), sqrt.(D)))
 end
 
 @testitem "Kernel Derivative Evaluation" begin
