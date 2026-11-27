@@ -22,12 +22,16 @@ permissions:
 
 jobs:
   test:
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ["1.10", "1.12", "1.13"]
     uses: ./.github/workflows/ReusableTest.yml
     with:
       os: ubuntu-latest
-      version: "1"
+      version: ${{ matrix.version }}
       arch: x64
       allow_failure: false
-      run_codecov: true
+      run_codecov: false
     secrets:
       codecov_token: ${{ secrets.CODECOV_TOKEN }}
